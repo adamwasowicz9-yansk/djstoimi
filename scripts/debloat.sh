@@ -64,7 +64,7 @@ GOOGLE_APPS=(
 "GoogleCalendarSyncAdapter" "AndroidDeveloperVerifier"
 "YourPhone_Stub" "AndroidAutoStub" "FamilyLinkParentalControls"
 "AndroidSystemIntelligence" "GoogleRestore"
-"SamsungMessages" "SearchSelector" "PlayAutoInstallConfig" "FamilyLinkParentalControls"
+"SamsungMessages" "SearchSelector" "PlayAutoInstallConfig" "FamilyLinkParentalControls" "Chrome" "Gmail2" "YouTube"
 )
 
 
