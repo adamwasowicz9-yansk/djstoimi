@@ -1732,6 +1732,7 @@ APPLY_STOCK_CONFIG() {
 		export STOCK_DEVICE_CPU_ABILIST="$(grep -m1 '^STOCK_DEVICE_CPU_ABILIST=' "${DEVICES_DIR}/$STOCK_DEVICE/config" | cut -d= -f2 | tr -d '\r')"
 		export STOCK_DEVICE_CHIPSET="$(grep -m1 '^STOCK_DEVICE_CHIPSET=' "${DEVICES_DIR}/$STOCK_DEVICE/config" | cut -d= -f2 | tr -d '\r')"
 		export USE_ALT_SDHMS_APP="$(grep -m1 '^USE_ALT_SDHMS_APP=' "${DEVICES_DIR}/$STOCK_DEVICE/config" | cut -d= -f2 | tr -d '\r')"
+		export STOCK_HAS_ESIM_SUPPORT="$(grep -m1 '^STOCK_HAS_ESIM_SUPPORT=' "${DEVICES_DIR}/$STOCK_DEVICE/config" | cut -d= -f2 | tr -d '\r')"
     fi
 
 	echo "Stock device vndk version: $STOCK_VNDK_VERSION"
@@ -1744,6 +1745,11 @@ APPLY_STOCK_CONFIG() {
         echo "STOCK DEVICE CPU ABI: $STOCK_DEVICE_CPU_ABILIST"
         echo "TARGET ROM CPU ABI  : $TARGET_ROM_CPU_ABILIST"
         exit 1
+    fi
+
+    # Remove ESIM files if stock device does not support.
+    if [ "$STOCK_HAS_ESIM_SUPPORT" = "FALSE" ]; then
+        REMOVE_ESIM_FILES "$EXTRACTED_FIRM_DIR"
     fi
 
 	# ADJUST SYSTEM_EXT PARTITION.
