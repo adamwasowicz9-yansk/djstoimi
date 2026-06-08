@@ -14,19 +14,23 @@ on:
       TARGET_DEVICE:
         description: "TARGET_DEVICE_MODEL."
         required: true
-        default: "SM-A346E"
+        default: "SM-G990B"
       TARGET_DEVICE_CSC:
         description: "TARGET_DEVICE_CSC."
         required: true
-        default: "BKD"
+        default: "EUX"
       TARGET_DEVICE_IMEI:
         description: "TARGET_DEVICE_IMEI."
         required: true
-        default: "353435774197736"
+        default: "353718681234563"
       OUTPUT_FILESYSTEM:
         description: "OUTPUT_FILESYSTEM. e.g erofs / ext4 / f2fs"
         required: true
         default: "erofs"
+      CRAP_VERSION:
+        description: "Wersja CrapUI (np. 1.0, 1.2, Beta)"
+        required: true
+        default: "1.0"
       COMPRESS_IMG_TO_XZ:
         description: "Compress IMG to XZ (True/False)"
         required: true
@@ -78,7 +82,8 @@ jobs:
             "${{ github.event.inputs.TARGET_DEVICE }}" \
             "${{ github.event.inputs.TARGET_DEVICE_CSC }}" \
             "${{ github.event.inputs.TARGET_DEVICE_IMEI }}" \
-            "${{ github.event.inputs.OUTPUT_FILESYSTEM }}"
+            "${{ github.event.inputs.OUTPUT_FILESYSTEM }}" \
+            "${{ github.event.inputs.CRAP_VERSION }}"
 
       - name: Compress all .img & make zip file before upload.
         run: |
@@ -99,6 +104,7 @@ jobs:
 
           echo "Creating zip: $ZIP_NAME"
           7z a -tzip "$ZIP_PATH" "$OUT_DIR"/* -mx=5
+ 
           echo "ZIP_PATH=$ZIP_PATH" >> $GITHUB_ENV
 
       - name: Upload file in GoFile & Create Release.
@@ -110,4 +116,4 @@ jobs:
           COMPRESS_IMG_TO_XZ: ${{ github.event.inputs.COMPRESS_IMG_TO_XZ }}
           USE_UI_8_TETHERING_APEX: ${{ github.event.inputs.USE_UI_8_TETHERING_APEX }}
         run: |
-           bash release.sh
+          bash release.sh
