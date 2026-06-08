@@ -99,7 +99,7 @@ MISC_SERVICES=(
 "UltraDataSaving_O" "Upday"
 "YourPhone_P1_5" "DsmsAPK"
 "vexfwk_service" "VexScanner"
-"LiveEffectService" " MyGalaxyService"
+"LiveEffectService" "MyGalaxyService"
 )
 
 
