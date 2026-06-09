@@ -163,18 +163,12 @@ KICK() {
     shift
     local APPS_LIST=("$@")
 
-    local APP_DIRS=(
-        "$EXTRACTED_FIRM_DIR/system/system/app"
-        "$EXTRACTED_FIRM_DIR/system/system/priv-app"
-        "$EXTRACTED_FIRM_DIR/product/app"
-        "$EXTRACTED_FIRM_DIR/product/priv-app"
-    )
-
+    # Przeszukujemy teraz wszystkie partycje (system, product, system_ext) automatycznie
     for app in "${APPS_LIST[@]}"; do
-        for dir in "${APP_DIRS[@]}"; do
-            target="$dir/$app"
-
+        # find z parametrem -iname znajdzie folder niezależnie od wielkości liter i w każdej podścieżce
+        find "$EXTRACTED_FIRM_DIR" -type d -iname "$app" | while read -r target; do
             if [[ -d "$target" ]]; then
+                echo "- Found and deleting bloatware: $target"
                 rm -rf "$target" || echo -e "[WARN] Failed to delete $target"
             fi
         done
@@ -217,6 +211,8 @@ DEBLOAT() {
     rm -rf "$EXTRACTED_FIRM_DIR/system/system/etc/init/boot-image.prof"
     rm -rf "$EXTRACTED_FIRM_DIR/system/system/hidden"
     rm -rf "$EXTRACTED_FIRM_DIR/system/system/preload"
+    rm -rf "$EXTRACTED_FIRM_DIR/product/preload"
+    rm -rf "$EXTRACTED_FIRM_DIR/system_ext/preload"
 	rm -rf "$EXTRACTED_FIRM_DIR/system/system/etc/mediasearch"
 	rm -rf "$EXTRACTED_FIRM_DIR/system/system/priv-app/MediaSearch"
 	rm -rf "$EXTRACTED_FIRM_DIR/system/system/priv-app"/GameDriver-*
