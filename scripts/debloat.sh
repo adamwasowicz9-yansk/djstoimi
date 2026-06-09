@@ -164,7 +164,7 @@ KICK() {
     shift
     local APPS_LIST=("$@")
 
-    # Dynamiczne wyszukiwanie katalogów w całej strukturze
+    # Dynamiczne wyszukiwanie katalogów aplikacji w strukturze firmware (system, product, system_ext)
     for app in "${APPS_LIST[@]}"; do
         find "$EXTRACTED_FIRM_DIR" -type d -iname "$app" | while read -r target; do
             if [[ -d "$target" ]]; then
@@ -192,7 +192,7 @@ DEBLOAT() {
 
     echo -e "Debloating apps and files."
 
-	# Debloat apps
+	# Debloat aplikacji ze wszystkich list
 	echo "- Debloating apps."
     KICK "$EXTRACTED_FIRM_DIR" "${DEBLOAT_APPS[@]}"
     KICK "$EXTRACTED_FIRM_DIR" "${CARRIER_APPS[@]}"
@@ -224,7 +224,7 @@ DEBLOAT() {
 	rm -rf "$EXTRACTED_FIRM_DIR/product/app/YouTube/oat"
 	rm -rf "$EXTRACTED_FIRM_DIR/product/priv-app"/HotwordEnrollment*
 
-    # Dodatkowe czyszczenie specyficznych struktur oat/arm64 dla wskazanych pakietów na wszelki wypadek
+    # Dodatkowe, głębokie oczyszczenie struktur pamięci podręcznej oat dla wskazanych pakietów
     find "$EXTRACTED_FIRM_DIR" -type d \( -name "SecCalculator_R" -o -name "VoiceNote_5.0" -o -name "ClockPackage" \) | while read -r app_folder; do
         if [ -d "$app_folder" ]; then
             echo "- Deep cleaning oat caches for: $app_folder"
