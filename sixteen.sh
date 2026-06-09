@@ -33,14 +33,16 @@ source "$(pwd)/scripts/QuantumRom.sh"
 EXTRACT_SUPER_IMG "$FIRM_DIR/$TARGET_DEVICE"
 EXTRACT_FIRMWARE_IMG "$FIRM_DIR/$TARGET_DEVICE" "all"
 
-# Patch base system
+# Patch base system (Zmieniona kolejność: DEBLOAT na samym końcu po dodaniu aplikacji flagowych)
 DECODE_OMC "$FIRM_DIR/$TARGET_DEVICE"
-DEBLOAT "$FIRM_DIR/$TARGET_DEVICE"
 APPLY_STOCK_CONFIG "$FIRM_DIR/$TARGET_DEVICE"
 PATCH_SELINUX "$FIRM_DIR/$TARGET_DEVICE"
 DISABLE_SECURITY "$FIRM_DIR/$TARGET_DEVICE"
 ADD_SAMSUNG_FLAGSHIP_APPS "$FIRM_DIR/$TARGET_DEVICE"
 APPLY_CUSTOM_FEATURES "$FIRM_DIR/$TARGET_DEVICE"
+
+# OSTATECZNE CZYSZCZENIE SYSTEMU
+DEBLOAT "$FIRM_DIR/$TARGET_DEVICE"
 
 # Framework modifications
 INSTALL_FRAMEWORK "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework/framework-res.apk"
@@ -61,8 +63,8 @@ mv -f "$WORK_DIR"/*.jar "$FIRM_DIR/$TARGET_DEVICE/system/system/framework/"
 PATCH_BT_LIB "$FIRM_DIR/$TARGET_DEVICE" "$WORK_DIR"
 
 # Set ROM display info
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.build.display.id" " [CrapUI $VERSION] "
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.build.display.id" " [CrapUI $VERSION] "
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.build.display.id" "[CrapUI $VERSION]"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.build.display.id" "[CrapUI $VERSION]"
 
 # Set device model spoofing
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.product.model" "SM-A528B"
@@ -140,4 +142,3 @@ BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "net.tcp.buffersize.wifi" "4096,8
 
 # Build image
 BUILD_IMG "$FIRM_DIR/$TARGET_DEVICE" "all" "$OUTPUT_FILESYSTEM" "$OUT_DIR"
-
