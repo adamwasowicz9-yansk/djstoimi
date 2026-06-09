@@ -45,6 +45,7 @@ SAMSUNG_APPS=(
 "GalleryWidget" "LiveStickers" "StoryService"
 "StickerFaceARAvatar" "sticker"
 "SamsungSoundRecorder" "SecSoundRecorder2015" "SamsungCalculator"
+"SecCalculator_R" "VoiceNote_5.0" "ClockPackage"
 )
 
 
@@ -163,12 +164,11 @@ KICK() {
     shift
     local APPS_LIST=("$@")
 
-    # Przeszukujemy teraz wszystkie partycje (system, product, system_ext) automatycznie
+    # Dynamiczne wyszukiwanie katalogów w całej strukturze
     for app in "${APPS_LIST[@]}"; do
-        # find z parametrem -iname znajdzie folder niezależnie od wielkości liter i w każdej podścieżce
         find "$EXTRACTED_FIRM_DIR" -type d -iname "$app" | while read -r target; do
             if [[ -d "$target" ]]; then
-                echo "- Found and deleting bloatware: $target"
+                echo "- Found and deleting bloatware directory: $target"
                 rm -rf "$target" || echo -e "[WARN] Failed to delete $target"
             fi
         done
@@ -223,4 +223,12 @@ DEBLOAT() {
 	rm -rf "$EXTRACTED_FIRM_DIR/product/app/SpeechServicesByGoogle/oat"
 	rm -rf "$EXTRACTED_FIRM_DIR/product/app/YouTube/oat"
 	rm -rf "$EXTRACTED_FIRM_DIR/product/priv-app"/HotwordEnrollment*
+
+    # Dodatkowe czyszczenie specyficznych struktur oat/arm64 dla wskazanych pakietów na wszelki wypadek
+    find "$EXTRACTED_FIRM_DIR" -type d \( -name "SecCalculator_R" -o -name "VoiceNote_5.0" -o -name "ClockPackage" \) | while read -r app_folder; do
+        if [ -d "$app_folder" ]; then
+            echo "- Deep cleaning oat caches for: $app_folder"
+            rm -rf "$app_folder/oat"
+        fi
+    done
 }
