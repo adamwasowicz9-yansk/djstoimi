@@ -12,7 +12,7 @@ DEBLOAT_APPS=(
 "LinkSharing_v11" "LiveDrawing" "MAPSAgent" "MdecService"
 "MinusOnePage" "MoccaMobile" "Netflix_stub" "Notes40"
 "ParentalCare" "PhotoTable" "SmartReminder" "SmartSwitchStub"
-"UnifiedWFC" "UniversalMDMClient" "VideoEditorLite_Dream_N"
+"UniversalMDMClient" "VideoEditorLite_Dream_N"
 "VisionIntelligence3.7" "VoiceAccess" "VTCameraSetting"
 "WebManual" "WifiGuider" "AutomationTest_FB" "FactoryTestProvider"
 )
@@ -66,7 +66,7 @@ GOOGLE_APPS=(
 "GoogleCalendarSyncAdapter" "AndroidDeveloperVerifier"
 "YourPhone_Stub" "AndroidAutoStub" "FamilyLinkParentalControls"
 "AndroidSystemIntelligence" "GoogleRestore"
-"SamsungMessages" "SearchSelector" "PlayAutoInstallConfig" "FamilyLinkParentalControls" "Chrome" "Gmail2" "YouTube" "Chrome64"
+"SamsungMessages" "SearchSelector" "PlayAutoInstallConfig" "Chrome" "Gmail2" "YouTube" "Chrome64"
 )
 
 
@@ -90,7 +90,7 @@ MISC_SERVICES=(
 "HashTagService" "LedCoverService"
 "LinkToWindowsService" "MemorySaver_O_Refresh"
 "MultiControl" "MultiControlVP6"
-"OMCAgent5" "OneStoreService" "FactoryAirCommandManager"
+"OneStoreService" "FactoryAirCommandManager"
 "SOAgent7" "SOAgent75" "SOAgent76"
 "SolarAudio-service" "SPPPushClient"
 "SumeNNService" "SVoiceIME"
