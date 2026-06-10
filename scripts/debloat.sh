@@ -29,7 +29,7 @@ CARRIER_APPS=(
 "SKTFindLostPhone" "SKTHiddenMenu" "SKTMemberShip"
 "SKTOneStore" "SKTFindLostPhoneApp"
 "TPhoneOnePackage" "TPhoneSetup" "TService"
-"UsimRegistrationKOR" "HpsAgreement_new" "KTAuth_Stub"
+"UsimRegistrationKOR" "HpsAgreement_new" "KTAuth_Stub" "FamilyLinkParentalControls"
 )
 
 
