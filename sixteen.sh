@@ -1,22 +1,20 @@
 #!/bin/bash
 
-if [ "$#" -lt 9 ]; then
-    echo "Usage: $0 <STOCK_DEVICE> <STOCK_DEVICE_CSC> <STOCK_DEVICE_IMEI> <USE_UI_8_TETHERING_APEX> <TARGET_DEVICE> <TARGET_DEVICE_CSC> <TARGET_DEVICE_IMEI> <OUTPUT_FILESYSTEM> <CRAP_VERSION>"
+if [ "$#" -lt 7 ]; then
+    echo "Usage: $0 <STOCK_DEVICE> <USE_UI_8_TETHERING_APEX> <TARGET_DEVICE> <TARGET_DEVICE_CSC> <TARGET_DEVICE_IMEI> <OUTPUT_FILESYSTEM> <CRAP_VERSION>"
     exit 1
 fi
 
-# Zmienne wejściowe z GitHub Actions
+# Device info
 export STOCK_DEVICE="$1"
-export STOCK_DEVICE_CSC="$2"
-export STOCK_DEVICE_IMEI="$3"
-export USE_UI_8_TETHERING_APEX="$4"
-export TARGET_DEVICE="$5"
-export TARGET_DEVICE_CSC="$6"
-export TARGET_DEVICE_IMEI="$7"
-export OUTPUT_FILESYSTEM="$8"
-export VERSION="$9"
+export USE_UI_8_TETHERING_APEX="$2"
+export TARGET_DEVICE="$3"
+export TARGET_DEVICE_CSC="$4"
+export TARGET_DEVICE_IMEI="$5"
+export OUTPUT_FILESYSTEM="$6"
+export VERSION="$7"
 
-# Ścieżki robocze
+# Directories
 export FIRM_DIR="$(pwd)/FW"
 export OUT_DIR="$(pwd)/OUT"
 export WORK_DIR="$(pwd)/WORK"
@@ -27,94 +25,109 @@ export SMART_MANAGER_CN="$(pwd)/QuantumROM/Mods/SMART_MANAGER_CN"
 
 export BUILD_PARTITIONS="product,system_ext,system"
 
-# Załadowanie skryptów pomocniczych
+# Source
 source "$(pwd)/scripts/debloat.sh"
 source "$(pwd)/scripts/QuantumRom.sh"
 
-# ====================================================================
-# SEKCJA: Pobieranie i Ekstrakcja Firmware dla STOCK_DEVICE (np. A52s)
-# ====================================================================
-export STOCK_DIR="$FIRM_DIR/$STOCK_DEVICE"
-
-if [ -n "$STOCK_DEVICE" ] && [ "$STOCK_DEVICE" != "None" ]; then
-    echo "======================================================"
-    echo " PRZYGOTOWYWANIE STOCK Fw DLA SYSTEMU BAZOWEGO ($STOCK_DEVICE)"
-    echo " CSC: $STOCK_DEVICE_CSC | IMEI: $STOCK_DEVICE_IMEI"
-    echo "======================================================"
-    
-    DOWNLOAD_FIRMWARE "$STOCK_DEVICE" "$STOCK_DEVICE_CSC" "$STOCK_DEVICE_IMEI" "$FIRM_DIR"
-    EXTRACT_FIRMWARE "$STOCK_DIR"
-    EXTRACT_SUPER_IMG "$STOCK_DIR"
-    
-    OLD_PARTITIONS="$BUILD_PARTITIONS"
-    export BUILD_PARTITIONS="system,product"
-    
-    EXTRACT_FIRMWARE_IMG "$STOCK_DIR" "all"
-    export BUILD_PARTITIONS="$OLD_PARTITIONS"
-fi
-
-# ====================================================================
-# SEKCJA: Ekstrakcja Docelowego Firmware Portu
-# ====================================================================
-echo "======================================================"
-echo " EKSTRAKCJA DOCELOWEGO FIRMWARE PORTU ($TARGET_DEVICE)"
-echo "======================================================"
+# Extract firmware - ZMODYFIKOWANE: Wyciąganie z obu folderów (baza i port)
 EXTRACT_SUPER_IMG "$FIRM_DIR/$TARGET_DEVICE"
 EXTRACT_FIRMWARE_IMG "$FIRM_DIR/$TARGET_DEVICE" "all"
+# Jeśli funkcje potrzebują plików z bazy:
+# EXTRACT_SUPER_IMG "$FIRM_DIR/$STOCK_DEVICE"
 
 # Patch base system
 DECODE_OMC "$FIRM_DIR/$TARGET_DEVICE"
 APPLY_STOCK_CONFIG "$FIRM_DIR/$TARGET_DEVICE"
+PATCH_SELINUX "$FIRM_DIR/$TARGET_DEVICE"
+DISABLE_SECURITY "$FIRM_DIR/$TARGET_DEVICE"
+ADD_SAMSUNG_FLAGSHIP_APPS "$FIRM_DIR/$TARGET_DEVICE"
+APPLY_CUSTOM_FEATURES "$FIRM_DIR/$TARGET_DEVICE"
 
-# ====================================================================
-# SEKCJA: Szybka podmiana i uzupełnienie build.prop (Stock -> Target)
-# ====================================================================
-if [ -d "$STOCK_DIR" ]; then
-    PATCH_BUILD_PROPS_FROM_STOCK "$STOCK_DIR" "$FIRM_DIR/$TARGET_DEVICE"
-fi
+# OSTATECZNE CZYSZCZENIE SYSTEMU
+DEBLOAT "$FIRM_DIR/$TARGET_DEVICE"
+
+# Framework modifications
+INSTALL_FRAMEWORK "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework/framework-res.apk"
+DECOMPILE "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework/ssrm.jar" "$WORK_DIR"
+DECOMPILE "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework/services.jar" "$WORK_DIR"
+DECOMPILE "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework/samsungkeystoreutils.jar" "$WORK_DIR"
+
+PATCH_SSRM "$WORK_DIR/ssrm"
+PATCH_FLAG_SECURE "$WORK_DIR/services"
+PATCH_SECURE_FOLDER "$WORK_DIR/services"
+PATCH_PRIVATE_SHARE "$WORK_DIR/samsungkeystoreutils"
+
+RECOMPILE "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework" "$WORK_DIR/ssrm" "$WORK_DIR"
+RECOMPILE "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework" "$WORK_DIR/services" "$WORK_DIR"
+RECOMPILE "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework" "$WORK_DIR/samsungkeystoreutils" "$WORK_DIR"
+mv -f "$WORK_DIR"/*.jar "$FIRM_DIR/$TARGET_DEVICE/system/system/framework/"
+
+PATCH_BT_LIB "$FIRM_DIR/$TARGET_DEVICE" "$WORK_DIR"
 
 # Set ROM display info
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.build.display.id" "QuantumROM Sixteen"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.quantum.version" "$VERSION"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.quantum.build.type" "Official"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.build.display.id" "[CrapUI $VERSION]"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.build.display.id" "[CrapUI $VERSION]"
 
-# Naprawy i Debloat
-FIX_BT "$FIRM_DIR/$TARGET_DEVICE"
-FIX_SECURE_FOLDER "$FIRM_DIR/$TARGET_DEVICE"
-FIX_WALLPAPER_CRASH "$FIRM_DIR/$TARGET_DEVICE"
-FIX_PRINTING_CRASH "$FIRM_DIR/$TARGET_DEVICE"
-FIX_AUTO_ROTATE_CRASH "$FIRM_DIR/$TARGET_DEVICE"
-FIX_ADB "$FIRM_DIR/$TARGET_DEVICE"
-DEBLOAT "$FIRM_DIR/$TARGET_DEVICE"
-ADD_WALLPAPERS "$FIRM_DIR/$TARGET_DEVICE"
+# Set device model spoofing
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.product.model" "SM-A528B"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.product.system.model" "SM-A528B"
 
-if [ "$USE_UI_8_TETHERING_APEX" = "True" ]; then
-    REPLACE_TETHERING_APEX "$FIRM_DIR/$TARGET_DEVICE"
-fi
+# ==========================================
+# CrapUI - System Tweaks
+# ==========================================
+echo "⚙️ Injecting performance, battery and network tweaks..."
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "debug.performance.tuning" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.sys.composition.type" "gpu"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "debug.composition.type" "gpu"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "debug.sf.hw" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.sys.ui.hw" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.enable.hw_accel" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "debug.hwui.renderer" "skiagl"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "view.scroll_friction" "0.005"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "view.scroll_friction" "0.005"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.dha_cached_max" "12"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.dha_cached_max" "12"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.dha_empty_max" "24"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.dha_empty_max" "24"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.dha_step" "2"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.dha_step" "2"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.dha_th_rate" "1.8"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.dha_th_rate" "1.8"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.sys.purgeable_assets" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.sys.fw.bg_apps_limit" "32"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.sys.fw.bg_apps_limit" "32"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.sys.fw.use_trim_settings" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.sys.fw.use_trim_settings" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "windowsmgr.max_events_per_sec" "240"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.min.fling_velocity" "8000"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.min.fling_velocity" "8000"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.max.fling_velocity" "20000"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.max.fling_velocity" "20000"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "pm.sleep_mode" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "pm.sleep_mode" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.hw_power_saving" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.hw_power_saving" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.am.reschedule_service" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.am.reschedule_service" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "profiler.force_disable_err_rpt" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "profiler.force_disable_ulog" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.nocheckin" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.nocheckin" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.kernel.android.checkjni" "0"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.sys.use_dithering" "0"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.debug.sensors.hub.log" "0"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.telephony.call_ring.delay" "0"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.telephony.call_ring.delay" "0"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.lge.proximity.delay" "25"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.mot.buttonlight.timeout" "0"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.ril.disable.power.collapse" "0"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.ril.power.collapse" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.ril.power.collapse" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.fast.dormancy" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.fast.dormancy" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.ril.fast.dormancy.rule" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.ril.fast.dormancy.rule" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "net.tcp.buffersize.wifi" "4096,87380,256144,4096,16384,256144"
 
-if [ "$STOCK_DEVICE" = "SM-A528B" ]; then
-    A52S_AUDIO_FIX "$FIRM_DIR/$TARGET_DEVICE"
-fi
-
-APPLY_OMC_MODS "$FIRM_DIR/$TARGET_DEVICE"
-
-# ====================================================================
-# SEKCJA: Eksport danych do GitHub Release Info (NOWE / ROZWIĄZANIE NIESPÓJNOŚCI)
-# ====================================================================
-TARGET_PROP_FILE="$FIRM_DIR/$TARGET_DEVICE/system/system/build.prop"
-if [ -f "$TARGET_PROP_FILE" ] && [ -n "$GITHUB_ENV" ]; then
-    AND_VER=$(grep -m1 "ro.build.version.release=" "$TARGET_PROP_FILE" | cut -d'=' -f2)
-    ONEUI_VER=$(grep -m1 "ro.build.version.oneui=" "$TARGET_PROP_FILE" | cut -d'=' -f2)
-    # Jeśli specyficzny klucz OneUI nie istnieje, spróbuj pobrać alternatywny sep.version
-    [ -z "$ONEUI_VER" ] && ONEUI_VER=$(grep -m1 "ro.build.version.sep=" "$TARGET_PROP_FILE" | cut -d'=' -f2)
-    CPU_ABI=$(grep -m1 "ro.product.cpu.abilist=" "$TARGET_PROP_FILE" | cut -d'=' -f2)
-
-    echo "VERSION=$VERSION" >> $GITHUB_ENV
-    echo "ANDROID_VERSION=${AND_VER:-Unknown}" >> $GITHUB_ENV
-    echo "ONE_UI_VERSION=${ONEUI_VER:-Unknown}" >> $GITHUB_ENV
-    echo "CPU_ABILIST=${CPU_ABI:-Unknown}" >> $GITHUB_ENV
-fi
-
-# Kompilacja finalna oprogramowania
-BUILD_FIRMWARE_IMG "$FIRM_DIR/$TARGET_DEVICE" "all"
-BUILD_SUPER_IMG "$FIRM_DIR/$TARGET_DEVICE" "$OUT_DIR"
+# Build image
+BUILD_IMG "$FIRM_DIR/$TARGET_DEVICE" "all" "$OUTPUT_FILESYSTEM" "$OUT_DIR"
