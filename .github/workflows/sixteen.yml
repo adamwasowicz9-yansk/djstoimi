@@ -8,13 +8,13 @@ on:
         required: true
         default: "SM-A528B"
       STOCK_DEVICE_CSC:
-        description: "CSC dla urządzenia bazowego (np. XEO)"
+        description: "CSC dla bazy (np. XEO)"
         required: true
-        default: "BTU"
+        default: "XEO"
       STOCK_DEVICE_IMEI:
-        description: "IMEI dla urządzenia bazowego"
+        description: "IMEI dla bazy (SM-A528B)"
         required: true
-        default: "350019151656457"
+        default: "353718681234563"
       USE_UI_8_TETHERING_APEX:
         description: "Set True if your kernel BPF version is 5.4 (lower than 5.10)."
         required: true
@@ -28,21 +28,21 @@ on:
         required: true
         default: "EUX"
       TARGET_DEVICE_IMEI:
-        description: "TARGET_DEVICE_IMEI"
+        description: "TARGET_DEVICE_IMEI (dla SM-G990B)"
         required: true
         default: "353718681234563"
       OUTPUT_FILESYSTEM:
         description: "OUTPUT_FILESYSTEM. e.g erofs / ext4 / f2fs"
         required: true
-        default: "ext4"
+        default: "erofs"
       CRAP_VERSION:
         description: "Wersja CrapUI (np. 1.0, 1.2, Beta)"
         required: true
-        default: "BETA"
+        default: "1.0"
       COMPRESS_IMG_TO_XZ:
         description: "Compress IMG to XZ (True/False)"
         required: true
-        default: "False"
+        default: "True"
 
 jobs:
   build:
@@ -68,11 +68,15 @@ jobs:
       - name: Install Dependencies.
         run: |
           sudo apt update
+          # Poprawiona paczka openjdk-17-jdk i zachowane wszystkie pakiety
           sudo apt install -y p7zip-full lz4 liblz4-1 liblz4-dev libzstd1 libzstd-dev build-essential android-sdk-libsparse-utils f2fs-tools fuse2fs fuse e2fsprogs python3 python3-pip zipalign unzip openjdk-17-jdk jq perl xxd kmod erofs-utils linux-modules-extra-$(uname -r)
           sudo modprobe f2fs
           
+          # Instalacja samloadera ze specjalnego repozytorium
           pip3 install git+https://github.com/SN-Abdullah-Al-Noman/samloader.git --break-system-packages
-          pip3 install --break-system-packages https://github.com/Lanchon/SAR-Tools/archive/refs/heads/master.tar.gz
+          
+          # NAPRAWA BŁĘDU 404 ze zdjęcia 154.jpg - instalacja stabilnego sartools z PyPI
+          pip3 install sartools --break-system-packages
           
           mkdir -p FW WORK OUT
 
@@ -90,7 +94,6 @@ jobs:
         run: |
           source scripts/QuantumRom.sh
           EXTRACT_FIRMWARE "FW/${{ github.event.inputs.TARGET_DEVICE }}"
-          EXTRACT_FIRMWARE "FW/${{ github.event.inputs.STOCK_DEVICE }}"
 
       - name: Start Rom Build For ${{ github.event.inputs.STOCK_DEVICE }}
         run: |
