@@ -33,7 +33,7 @@ source "$(pwd)/scripts/QuantumRom.sh"
 EXTRACT_SUPER_IMG "$FIRM_DIR/$TARGET_DEVICE"
 EXTRACT_FIRMWARE_IMG "$FIRM_DIR/$TARGET_DEVICE" "all"
 
-# Patch base system (Zmieniona kolejność: DEBLOAT na samym końcu po dodaniu aplikacji flagowych)
+# Patch base system
 DECODE_OMC "$FIRM_DIR/$TARGET_DEVICE"
 APPLY_STOCK_CONFIG "$FIRM_DIR/$TARGET_DEVICE"
 PATCH_SELINUX "$FIRM_DIR/$TARGET_DEVICE"
@@ -76,7 +76,7 @@ BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.product.system.model" "SM-A5
 
 echo "⚙️ Injecting performance, battery and network tweaks..."
 
-# 1. UI Rendering & 120Hz Smoothness (Optimized for SkiaGL)
+# 1. UI Rendering, SurfaceFlinger & 120Hz Smoothness
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "debug.performance.tuning" "1"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.sys.composition.type" "gpu"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "debug.composition.type" "gpu"
@@ -84,10 +84,34 @@ BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "debug.sf.hw" "1"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.sys.ui.hw" "1"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.enable.hw_accel" "true"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "debug.hwui.renderer" "skiagl"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "video.accelerate.hw" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.product.gpu.driver" "1"
+
+# SurfaceFlinger Triple Buffering & Composition Fixes
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.surface_flinger.max_frame_buffer_acquired_stores" "3"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "debug.sf.disable_client_composition_cache" "0"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "debug.sf.latch_unsignaled" "1"
+
+# Fling & Touch Responsiveness (Targeted for 120Hz panels)
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "windowsmgr.max_events_per_sec" "120"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "view.scroll_friction" "0.005"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "view.scroll_friction" "0.005"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.min.fling_velocity" "8000"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.min.fling_velocity" "8000"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.max.fling_velocity" "20000"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.max.fling_velocity" "20000"
 
-# 2. RAM Management & DHA Optimization
+# 2. RAM Management, Launcher Retention & DHA Optimization
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.HOME_APP_ADJ" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.sys.purgeable_assets" "1"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.sys.fw.bg_apps_limit" "32"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.sys.fw.bg_apps_limit" "32"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.sys.fw.empty_app_percent" "50"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.sys.fw.use_trim_settings" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.sys.fw.use_trim_settings" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.vendor.qti.am.res_limit_enable" "true"
+
+# Samsung Dynamic Memory Allocation (DHA)
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.dha_cached_max" "12"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.dha_cached_max" "12"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.dha_empty_max" "24"
@@ -96,42 +120,32 @@ BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.dha_step" "2"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.dha_step" "2"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.dha_th_rate" "1.8"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.dha_th_rate" "1.8"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.sys.purgeable_assets" "1"
 
-# 3. Boot Speed & Fling Velocity
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.sys.fw.bg_apps_limit" "32"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.sys.fw.bg_apps_limit" "32"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.sys.fw.use_trim_settings" "true"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.sys.fw.use_trim_settings" "true"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "windowsmgr.max_events_per_sec" "240"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.min.fling_velocity" "8000"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.min.fling_velocity" "8000"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.max.fling_velocity" "20000"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.max.fling_velocity" "20000"
-
-# 4. Deep Sleep & Power Saving
+# 3. Deep Sleep, Media Scanner & Fast Boot
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "pm.sleep_mode" "1"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "pm.sleep_mode" "1"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.hw_power_saving" "true"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.hw_power_saving" "true"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.am.reschedule_service" "true"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.am.reschedule_service" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.hw_quickpoweron" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "dev.bootcomplete" "0"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.media.enc.jpeg.quality" "100"
 
-# 5. Disable Logs & Telemetry
+# 4. Disable Logs, Telemetry & JNI Debugging Overhead
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.nocheck" "true"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.kernel.android.checkjni" "0"
+BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.kernel.checkjni" "0"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "profiler.force_disable_err_rpt" "1"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "profiler.force_disable_ulog" "1"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.config.nocheckin" "1"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.config.nocheckin" "1"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.kernel.android.checkjni" "0"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.sys.use_dithering" "0"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "persist.debug.sensors.hub.log" "0"
 
-# 6. Network, Wi-Fi & RIL Enhancements
+# 5. Network, Wi-Fi & Modern RIL Handling
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.telephony.call_ring.delay" "0"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.telephony.call_ring.delay" "0"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.lge.proximity.delay" "25"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.mot.buttonlight.timeout" "0"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.ril.disable.power.collapse" "0"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.ril.power.collapse" "1"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.ril.power.collapse" "1"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.fast.dormancy" "1"
