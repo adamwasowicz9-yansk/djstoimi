@@ -8,13 +8,13 @@ on:
         required: true
         default: "SM-A528B"
       STOCK_DEVICE_CSC:
-        description: "CSC dla bazy (np. XEO)"
+        description: "CSC dla urządzenia bazowego (np. XEO)"
         required: true
-        default: "XEO"
+        default: "BTU"
       STOCK_DEVICE_IMEI:
-        description: "IMEI dla bazy (SM-A528B)"
+        description: "IMEI dla urządzenia bazowego (SM-A528B)"
         required: true
-        default: "353718681234563"
+        default: "350019151656457"
       USE_UI_8_TETHERING_APEX:
         description: "Set True if your kernel BPF version is 5.4 (lower than 5.10)."
         required: true
@@ -34,7 +34,7 @@ on:
       OUTPUT_FILESYSTEM:
         description: "OUTPUT_FILESYSTEM. e.g erofs / ext4 / f2fs"
         required: true
-        default: "erofs"
+        default: "ext4"
       CRAP_VERSION:
         description: "Wersja CrapUI (np. 1.0, 1.2, Beta)"
         required: true
@@ -42,7 +42,7 @@ on:
       COMPRESS_IMG_TO_XZ:
         description: "Compress IMG to XZ (True/False)"
         required: true
-        default: "True"
+        default: "False"
 
 jobs:
   build:
@@ -68,32 +68,39 @@ jobs:
       - name: Install Dependencies.
         run: |
           sudo apt update
-          # Poprawiona paczka openjdk-17-jdk i zachowane wszystkie pakiety
-          sudo apt install -y p7zip-full lz4 liblz4-1 liblz4-dev libzstd1 libzstd-dev build-essential android-sdk-libsparse-utils f2fs-tools fuse2fs fuse e2fsprogs python3 python3-pip zipalign unzip openjdk-17-jdk jq perl xxd kmod erofs-utils linux-modules-extra-$(uname -r)
+          # 1. Naprawa instalacji Javy (pełny pakiet openjdk-17-jdk dla Ubuntu 24.04)
+          sudo apt install -y p7zip-full lz4 liblz4-1 liblz4-dev libzstd1 libzstd-dev build-essential android-sdk-libsparse-utils f2fs-tools fuse2fs fuse e2fsprogs python3 python3-pip zipalign unzip openjdk-17-jdk jq perl xxd kmod erofs-utils linux-modules-extra-$(uname -r) git
           sudo modprobe f2fs
           
-          # Instalacja samloadera ze specjalnego repozytorium
+          # 2. Instalacja samloadera z działającego repozytorium z flagą omijającą restrykcje środowiska
           pip3 install git+https://github.com/SN-Abdullah-Al-Noman/samloader.git --break-system-packages
           
-          # NAPRAWA BŁĘDU 404 ze zdjęcia 154.jpg - instalacja stabilnego sartools z PyPI
-          pip3 install sartools --break-system-packages
+          # 3. Naprawa błędu 404 (SAR-Tools) - klonowanie i instalacja lokalna bezpośrednio ze źródeł
+          git clone https://github.com/Lanchon/SAR-Tools.git
+          cd SAR-Tools
+          pip3 install . --break-system-packages
+          cd ..
           
           mkdir -p FW WORK OUT
 
       - name: Download TARGET firmware ▶️ ${{ github.event.inputs.TARGET_DEVICE }}
         run: |
           source scripts/QuantumRom.sh
+          # Pobieranie softu portu (czysty zestaw argumentów bez pustej zmiennej na końcu)
           DOWNLOAD_FIRMWARE "${{ github.event.inputs.TARGET_DEVICE }}" "${{ github.event.inputs.TARGET_DEVICE_CSC }}" "${{ github.event.inputs.TARGET_DEVICE_IMEI }}" "FW"
 
       - name: Download STOCK firmware ▶️ ${{ github.event.inputs.STOCK_DEVICE }}
         run: |
           source scripts/QuantumRom.sh
+          # Pobieranie softu bazy (wypełnienie pól CSC i IMEI podanych w formularzu Actions)
           DOWNLOAD_FIRMWARE "${{ github.event.inputs.STOCK_DEVICE }}" "${{ github.event.inputs.STOCK_DEVICE_CSC }}" "${{ github.event.inputs.STOCK_DEVICE_IMEI }}" "FW"
 
       - name: Extract firmware
         run: |
           source scripts/QuantumRom.sh
+          # Zabezpieczenie: wypakowanie obu systemów w strukturze FW/ tak, aby skrypty miały do nich pełny dostęp
           EXTRACT_FIRMWARE "FW/${{ github.event.inputs.TARGET_DEVICE }}"
+          EXTRACT_FIRMWARE "FW/${{ github.event.inputs.STOCK_DEVICE }}"
 
       - name: Start Rom Build For ${{ github.event.inputs.STOCK_DEVICE }}
         run: |
