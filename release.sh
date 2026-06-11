@@ -17,6 +17,15 @@ echo "🌎 File uploaded here: $GOFILE_LINK"
 FILE_SIZE=$(du -h "$ZIP_PATH" | cut -f1)
 MD5_SUM=$(md5sum "$ZIP_PATH" | awk '{print $1}')
 
+# Zabezpieczenie zmiennych przed pustymi wartościami
+VERSION="${VERSION:-1.0}"
+ANDROID_VERSION="${ANDROID_VERSION:-Unknown}"
+ONE_UI_VERSION="${ONE_UI_VERSION:-Unknown}"
+CPU_ABILIST="${CPU_ABILIST:-Unknown}"
+OUTPUT_FILESYSTEM="${OUTPUT_FILESYSTEM:-erofs}"
+COMPRESS_IMG_TO_XZ="${COMPRESS_IMG_TO_XZ:-False}"
+USE_UI_8_TETHERING_APEX="${USE_UI_8_TETHERING_APEX:-False}"
+
 # Release body
 RELEASE_BODY="#### 🌎 Download:
 $GOFILE_LINK
@@ -45,18 +54,12 @@ JSON_BODY=$(printf '%s' "$RELEASE_BODY" | python3 -c 'import json,sys; print(jso
 
 # Create release
 if [ -n "$GIT_TOKEN" ]; then
-  echo "Creating GitHub release..."
-
-  curl -X POST "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" \
-    -H "Authorization: token $GIT_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"tag_name\": \"$TAG_NAME\",
-      \"name\": \"$RELEASE_NAME\",
-      \"body\": $JSON_BODY,
-      \"draft\": false,
-      \"prerelease\": false
-    }"
+  echo "Creating GitHub Release..."
+  curl -X POST \
+    -H "Authorization: token ${GIT_TOKEN}" \
+    -H "Accept: application/vnd.github.v3+json" \
+    https://api.github.com/repos/${GITHUB_REPOSITORY}/releases \
+    -d "{\"tag_name\":\"${TAG_NAME}\",\"target_commitish\":\"main\",\"name\":\"${RELEASE_NAME}\",\"body\":${JSON_BODY},\"draft\":false,\"prerelease\":false}"
 else
-  echo "GIT_TOKEN not found. Skipping release."
+  echo "Warning: GIT_TOKEN is empty. Skipping GitHub release creation."
 fi
