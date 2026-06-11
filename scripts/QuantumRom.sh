@@ -2515,3 +2515,71 @@ BUILD_SUPER_IMG() {
         $IMAGES \
         --output "$OUTPUT_IMG"
 }
+
+###################################################################################################
+# QUANTUMROM TOOLS: FAST BUILD.PROP PATCHER (STOCK -> PORT)
+###################################################################################################
+
+PATCH_BUILD_PROPS_FROM_STOCK() {
+    local STOCK_EXT_DIR="$1"
+    local TARGET_EXT_DIR="$2"
+
+    echo " "
+    echo "======================================================"
+    echo " FAST PATCHER: build.prop (Stock -> Port)             "
+    echo "======================================================"
+
+    # Definiowanie ścieżek do plików build.prop w wyekstrahowanych katalogach montowania
+    local STOCK_SYS_PROP="${STOCK_EXT_DIR}/system/system/build.prop"
+    local STOCK_PROD_PROP="${STOCK_EXT_DIR}/product/etc/build.prop"
+    
+    local TARGET_SYS_PROP="${TARGET_EXT_DIR}/system/system/build.prop"
+    local TARGET_PROD_PROP="${TARGET_EXT_DIR}/product/etc/build.prop"
+
+    # Wewnętrzna funkcja optymalizująca proces dla konkretnej partycji za pomocą polecenia AWK
+    fast_prop_update() {
+        local SRC="$1"
+        local DST="$2"
+        
+        if [ ! -f "$SRC" ] || [ ! -f "$DST" ]; then
+            echo "[-] Pomijanie: Brak pliku $(basename "$DST") w strukturze źródłowej lub docelowej."
+            return
+        fi
+
+        echo "[*] Przetwarzanie i modyfikacja: $(basename "$DST")"
+        
+        # 1. Tworzenie bezpiecznego pliku tymczasowego
+        local TMP_PROPS=$(mktemp)
+        
+        # 2. Szybkie wyciągnięcie ze stocka tylko interesujących nas linijek (model, fingerprint, keys itp.)
+        grep -E "^ro\.(product|build|bootimage|system)\.(model|name|device|brand|flavor|description|fingerprint|tags|type)=" "$SRC" > "$TMP_PROPS"
+        
+        # 3. Zmiana test-keys na release-keys bezpośrednio na wyekstrahowanych linijkach (wymuszenie SafetyNet)
+        sed -i 's/=\(.*\)test-keys/=\1release-keys/g' "$TMP_PROPS"
+        
+        # Awaryjne dopisanie tagów release-keys, jeśli stock ich w ogóle nie posiadał w danej sekcji
+        if ! grep -q "ro.build.tags=" "$TMP_PROPS"; then echo "ro.build.tags=release-keys" >> "$TMP_PROPS"; fi
+        if ! grep -q "ro.system.build.tags=" "$TMP_PROPS"; then echo "ro.system.build.tags=release-keys" >> "$TMP_PROPS"; fi
+
+        # 4. Magia AWK: Ładuje plik tymczasowy do pamięci (RAM), przegląda oryginalny plik z portu
+        # Podmienia wartości dla pasujących kluczy, a te których brakuje - dopisuje na końcu pliku.
+        local TMP_OUT=$(mktemp)
+        awk -F= '
+            NR==FNR { if($1 && $0 !~ /^#/) prop[$1]=$2; next }
+            { if($1 in prop) { print $1"="prop[$1]; delete prop[$1] } else { print $0 } }
+            END { for(p in prop) print p"="" "prop[p] }
+        ' "$TMP_PROPS" "$DST" | sed 's/= /=/g' > "$TMP_OUT"
+
+        # 5. Nadpisanie właściwego pliku docelowego i posprzątanie pamięci podręcznej systemu
+        cat "$TMP_OUT" > "$DST"
+        rm -f "$TMP_PROPS" "$TMP_OUT"
+    }
+
+    # Wywołanie procesu dla build.prop z partycji SYSTEM
+    fast_prop_update "$STOCK_SYS_PROP" "$TARGET_SYS_PROP"
+    
+    # Wywołanie procesu dla build.prop z partycji PRODUCT
+    fast_prop_update "$STOCK_PROD_PROP" "$TARGET_PROD_PROP"
+    
+    echo "[+] Aktualizacja i synchronizacja właściwości build.prop zakończona."
+}
