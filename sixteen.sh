@@ -42,22 +42,14 @@ if [ -n "$STOCK_DEVICE" ] && [ "$STOCK_DEVICE" != "None" ]; then
     echo " CSC: $STOCK_DEVICE_CSC | IMEI: $STOCK_DEVICE_IMEI"
     echo "======================================================"
     
-    # 1. Pobieranie obrazów za pomocą przekazanych dedykowanych parametrów ze stocka
     DOWNLOAD_FIRMWARE "$STOCK_DEVICE" "$STOCK_DEVICE_CSC" "$STOCK_DEVICE_IMEI" "$FIRM_DIR"
-    
-    # 2. Rozpakowanie archiwów i dekompresja pliku .lz4
     EXTRACT_FIRMWARE "$STOCK_DIR"
-    
-    # 3. Rozpakowanie obrazu super.img dla Stocka
     EXTRACT_SUPER_IMG "$STOCK_DIR"
     
-    # Przełączamy ekstrakcję obrazów tylko na system i product w celu optymalizacji czasu
     OLD_PARTITIONS="$BUILD_PARTITIONS"
     export BUILD_PARTITIONS="system,product"
     
     EXTRACT_FIRMWARE_IMG "$STOCK_DIR" "all"
-    
-    # Powrót do domyślnych partycji wymaganych przez portowany system
     export BUILD_PARTITIONS="$OLD_PARTITIONS"
 fi
 
@@ -86,7 +78,7 @@ BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.build.display.id" "QuantumROM
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.quantum.version" "$VERSION"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.quantum.build.type" "Official"
 
-# Naprawy i Debloat (zgodnie z pierwotnym skryptem)
+# Naprawy i Debloat
 FIX_BT "$FIRM_DIR/$TARGET_DEVICE"
 FIX_SECURE_FOLDER "$FIRM_DIR/$TARGET_DEVICE"
 FIX_WALLPAPER_CRASH "$FIRM_DIR/$TARGET_DEVICE"
@@ -105,6 +97,23 @@ if [ "$STOCK_DEVICE" = "SM-A528B" ]; then
 fi
 
 APPLY_OMC_MODS "$FIRM_DIR/$TARGET_DEVICE"
+
+# ====================================================================
+# SEKCJA: Eksport danych do GitHub Release Info (NOWE / ROZWIĄZANIE NIESPÓJNOŚCI)
+# ====================================================================
+TARGET_PROP_FILE="$FIRM_DIR/$TARGET_DEVICE/system/system/build.prop"
+if [ -f "$TARGET_PROP_FILE" ] && [ -n "$GITHUB_ENV" ]; then
+    AND_VER=$(grep -m1 "ro.build.version.release=" "$TARGET_PROP_FILE" | cut -d'=' -f2)
+    ONEUI_VER=$(grep -m1 "ro.build.version.oneui=" "$TARGET_PROP_FILE" | cut -d'=' -f2)
+    # Jeśli specyficzny klucz OneUI nie istnieje, spróbuj pobrać alternatywny sep.version
+    [ -z "$ONEUI_VER" ] && ONEUI_VER=$(grep -m1 "ro.build.version.sep=" "$TARGET_PROP_FILE" | cut -d'=' -f2)
+    CPU_ABI=$(grep -m1 "ro.product.cpu.abilist=" "$TARGET_PROP_FILE" | cut -d'=' -f2)
+
+    echo "VERSION=$VERSION" >> $GITHUB_ENV
+    echo "ANDROID_VERSION=${AND_VER:-Unknown}" >> $GITHUB_ENV
+    echo "ONE_UI_VERSION=${ONEUI_VER:-Unknown}" >> $GITHUB_ENV
+    echo "CPU_ABILIST=${CPU_ABI:-Unknown}" >> $GITHUB_ENV
+fi
 
 # Kompilacja finalna oprogramowania
 BUILD_FIRMWARE_IMG "$FIRM_DIR/$TARGET_DEVICE" "all"
