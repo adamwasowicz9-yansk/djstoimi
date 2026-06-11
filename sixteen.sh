@@ -1,20 +1,22 @@
 #!/bin/bash
 
-if [ "$#" -lt 7 ]; then
-    echo "Usage: $0 <STOCK_DEVICE> <USE_UI_8_TETHERING_APEX> <TARGET_DEVICE> <TARGET_DEVICE_CSC> <TARGET_DEVICE_IMEI> <OUTPUT_FILESYSTEM> <CRAP_VERSION>"
+if [ "$#" -lt 9 ]; then
+    echo "Usage: $0 <STOCK_DEVICE> <STOCK_DEVICE_CSC> <STOCK_DEVICE_IMEI> <USE_UI_8_TETHERING_APEX> <TARGET_DEVICE> <TARGET_DEVICE_CSC> <TARGET_DEVICE_IMEI> <OUTPUT_FILESYSTEM> <CRAP_VERSION>"
     exit 1
 fi
 
-# Device info
+# Zmienne wejściowe z GitHub Actions
 export STOCK_DEVICE="$1"
-export USE_UI_8_TETHERING_APEX="$2"
-export TARGET_DEVICE="$3"
-export TARGET_DEVICE_CSC="$4"
-export TARGET_DEVICE_IMEI="$5"
-export OUTPUT_FILESYSTEM="$6"
-export VERSION="$7"
+export STOCK_DEVICE_CSC="$2"
+export STOCK_DEVICE_IMEI="$3"
+export USE_UI_8_TETHERING_APEX="$4"
+export TARGET_DEVICE="$5"
+export TARGET_DEVICE_CSC="$6"
+export TARGET_DEVICE_IMEI="$7"
+export OUTPUT_FILESYSTEM="$8"
+export VERSION="$9"
 
-# Directories
+# Ścieżki robocze
 export FIRM_DIR="$(pwd)/FW"
 export OUT_DIR="$(pwd)/OUT"
 export WORK_DIR="$(pwd)/WORK"
@@ -25,7 +27,7 @@ export SMART_MANAGER_CN="$(pwd)/QuantumROM/Mods/SMART_MANAGER_CN"
 
 export BUILD_PARTITIONS="product,system_ext,system"
 
-# Source
+# Załadowanie skryptów pomocniczych
 source "$(pwd)/scripts/debloat.sh"
 source "$(pwd)/scripts/QuantumRom.sh"
 
@@ -37,24 +39,25 @@ export STOCK_DIR="$FIRM_DIR/$STOCK_DEVICE"
 if [ -n "$STOCK_DEVICE" ] && [ "$STOCK_DEVICE" != "None" ]; then
     echo "======================================================"
     echo " PRZYGOTOWYWANIE STOCK Fw DLA SYSTEMU BAZOWEGO ($STOCK_DEVICE)"
+    echo " CSC: $STOCK_DEVICE_CSC | IMEI: $STOCK_DEVICE_IMEI"
     echo "======================================================"
     
-    # 1. Pobieranie obrazów stockowych (QuantumRom.sh)
-    DOWNLOAD_FIRMWARE "$STOCK_DEVICE" "$TARGET_DEVICE_CSC" "$TARGET_DEVICE_IMEI" "$FIRM_DIR"
+    # 1. Pobieranie obrazów za pomocą przekazanych dedykowanych parametrów ze stocka
+    DOWNLOAD_FIRMWARE "$STOCK_DEVICE" "$STOCK_DEVICE_CSC" "$STOCK_DEVICE_IMEI" "$FIRM_DIR"
     
-    # 2. Ekstrakcja archiwów i dekompresja lz4
+    # 2. Rozpakowanie archiwów i dekompresja pliku .lz4
     EXTRACT_FIRMWARE "$STOCK_DIR"
     
-    # 3. Rozpakowanie super.img dla Stocka
+    # 3. Rozpakowanie obrazu super.img dla Stocka
     EXTRACT_SUPER_IMG "$STOCK_DIR"
     
-    # Ograniczamy ekstrakcję obrazów Stocka tylko do system i product dla oszczędności czasu
+    # Przełączamy ekstrakcję obrazów tylko na system i product w celu optymalizacji czasu
     OLD_PARTITIONS="$BUILD_PARTITIONS"
     export BUILD_PARTITIONS="system,product"
     
     EXTRACT_FIRMWARE_IMG "$STOCK_DIR" "all"
     
-    # Przywracamy domyślne partycje dla portu
+    # Powrót do domyślnych partycji wymaganych przez portowany system
     export BUILD_PARTITIONS="$OLD_PARTITIONS"
 fi
 
@@ -72,7 +75,7 @@ DECODE_OMC "$FIRM_DIR/$TARGET_DEVICE"
 APPLY_STOCK_CONFIG "$FIRM_DIR/$TARGET_DEVICE"
 
 # ====================================================================
-# SEKCJA: Automatyczne Kopiowanie Właściwości ze Stocka do Portu
+# SEKCJA: Szybka podmiana i uzupełnienie build.prop (Stock -> Target)
 # ====================================================================
 if [ -d "$STOCK_DIR" ]; then
     PATCH_BUILD_PROPS_FROM_STOCK "$STOCK_DIR" "$FIRM_DIR/$TARGET_DEVICE"
@@ -83,7 +86,7 @@ BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.build.display.id" "QuantumROM
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.quantum.version" "$VERSION"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.quantum.build.type" "Official"
 
-# Fixes
+# Naprawy i Debloat (zgodnie z pierwotnym skryptem)
 FIX_BT "$FIRM_DIR/$TARGET_DEVICE"
 FIX_SECURE_FOLDER "$FIRM_DIR/$TARGET_DEVICE"
 FIX_WALLPAPER_CRASH "$FIRM_DIR/$TARGET_DEVICE"
@@ -103,6 +106,6 @@ fi
 
 APPLY_OMC_MODS "$FIRM_DIR/$TARGET_DEVICE"
 
-# Build firmware
+# Kompilacja finalna oprogramowania
 BUILD_FIRMWARE_IMG "$FIRM_DIR/$TARGET_DEVICE" "all"
 BUILD_SUPER_IMG "$FIRM_DIR/$TARGET_DEVICE" "$OUT_DIR"
