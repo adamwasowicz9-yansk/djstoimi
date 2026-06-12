@@ -55,6 +55,42 @@ PATCH_FLAG_SECURE "$WORK_DIR/services"
 PATCH_SECURE_FOLDER "$WORK_DIR/services"
 PATCH_PRIVATE_SHARE "$WORK_DIR/samsungkeystoreutils"
 
+# ====================================================================
+# DODATKOWY PATCH: AUTO-CONFIRM 4-DIGIT PIN (UN1CA FEATURE)
+# ====================================================================
+echo "--> Aplikowanie patcha auto-confirm PIN do services.jar..."
+LSS_SMALI="$WORK_DIR/services/smali/com/android/server/locksettings/LockSettingsService.smali"
+SPM_SMALI="$WORK_DIR/services/smali/com/android/server/locksettings/SyntheticPasswordManager.smali"
+
+if [ -f "$LSS_SMALI" ]; then
+    echo "Patchowanie LockSettingsService.smali..."
+    sed -i '/refreshStoredPinLength(I)Z/,/end method/ s/const\/4 v0, 0x6/const\/4 v0, 0x4/' "$LSS_SMALI"
+fi
+
+if [ -f "$SPM_SMALI" ]; then
+    echo "Patchowanie SyntheticPasswordManager.smali..."
+    sed -i '/createLskfBasedProtector/,/end method/ s/const\/4 v12, 0x6/const\/4 v12, 0x4/' "$SPM_SMALI"
+fi
+
+# Patchowanie SecSettings.apk (Ustawienia menu Lockscreena)
+if [ -f "$FIRM_DIR/$TARGET_DEVICE/system/system/priv-app/SecSettings/SecSettings.apk" ]; then
+    echo "--> Rozpoczynam patchowanie SecSettings.apk..."
+    "$APKTOOL" d -f -r "$FIRM_DIR/$TARGET_DEVICE/system/system/priv-app/SecSettings/SecSettings.apk" -o "$WORK_DIR/SecSettings_out"
+    
+    CLP_SMALI="$WORK_DIR/SecSettings_out/smali/com/android/settings/password/ChooseLockPassword\$ChooseLockPasswordFragment.smali"
+    
+    if [ -f "$CLP_SMALI" ]; then
+        echo "Aplikowanie poprawek smali w ChooseLockPasswordFragment..."
+        sed -i '/handleNext\$2()V/,/end method/ s/const\/4 v4, 0x6/const\/4 v4, 0x4/' "$CLP_SMALI"
+        sed -i '/setAutoPinConfirmOption(IZ)V/,/end method/ s/const\/4 p2, 0x6/const\/4 p2, 0x4/' "$CLP_SMALI"
+        
+        echo "Kompilacja zwrotna SecSettings.apk..."
+        "$APKTOOL" b "$WORK_DIR/SecSettings_out" -o "$FIRM_DIR/$TARGET_DEVICE/system/system/priv-app/SecSettings/SecSettings.apk"
+    fi
+    rm -rf "$WORK_DIR/SecSettings_out"
+fi
+# ====================================================================
+
 RECOMPILE "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework" "$WORK_DIR/ssrm" "$WORK_DIR"
 RECOMPILE "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework" "$WORK_DIR/services" "$WORK_DIR"
 RECOMPILE "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework" "$WORK_DIR/samsungkeystoreutils" "$WORK_DIR"
