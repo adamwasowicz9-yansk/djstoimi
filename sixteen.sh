@@ -68,17 +68,13 @@ BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.build.display.id" "[CrapUI $
 
 # Set device model spoofing
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.product.model" "SM-A528B"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.product.system.model" "SM-A528B"
 
 # === DODATKOWE PATCHES BUILD.PROP (fingerprint, opis, produkt) ===
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.product.system.name" "a52sxqxx"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.product.system.name" "a52sxqxx"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.product.system.device" "a52sxq"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.product.system.device" "a52sxq"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.system.build.fingerprint" "samsung/a52sxqxx/a52sxq:11/RP1A.200720.012/A528BXXSBGYI3:user/release-keys"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.build.description" "a52sxqxx-user 11 RP1A.200720.012 A528BXXSBGYI3 release-keys"
 BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "system" "ro.build.product" "a52sxq"
-BUILD_PROP "$FIRM_DIR/$TARGET_DEVICE" "product" "ro.build.product" "a52sxq"
 
 # ==========================================
 # CrapUI - System Tweaks
