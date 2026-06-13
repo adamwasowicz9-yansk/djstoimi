@@ -12,10 +12,9 @@ DEBLOAT_APPS=(
 "LinkSharing_v11" "LiveDrawing" "MAPSAgent" "MdecService"
 "MinusOnePage" "MoccaMobile" "Netflix_stub" "Notes40"
 "ParentalCare" "PhotoTable" "SmartReminder" "SmartSwitchStub"
-"UnifiedWFC" "UniversalMDMClient" "VideoEditorLite_Dream_N"
+"UniversalMDMClient" "VideoEditorLite_Dream_N"
 "VisionIntelligence3.7" "VoiceAccess" "VTCameraSetting"
 "WebManual" "WifiGuider" "AutomationTest_FB" "FactoryTestProvider"
-"StickerCenter" "CIDManager" "FacAtFunction" "serviceModeApp_FB"
 )
 
 
@@ -30,7 +29,7 @@ CARRIER_APPS=(
 "SKTFindLostPhone" "SKTHiddenMenu" "SKTMemberShip"
 "SKTOneStore" "SKTFindLostPhoneApp"
 "TPhoneOnePackage" "TPhoneSetup" "TService"
-"UsimRegistrationKOR" "HpsAgreement_new" "KTAuth_Stub"
+"UsimRegistrationKOR" "HpsAgreement_new" "KTAuth_Stub" "FamilyLinkParentalControls"
 )
 
 
@@ -45,6 +44,8 @@ SAMSUNG_APPS=(
 "AvatarEmojiSticker_S" "AvatarPicker"
 "GalleryWidget" "LiveStickers" "StoryService"
 "StickerFaceARAvatar" "sticker"
+"SamsungSoundRecorder" "SecSoundRecorder2015" "SamsungCalculator"
+"SecCalculator_R" "VoiceNote_5.0" "ClockPackage"
 )
 
 
@@ -65,7 +66,7 @@ GOOGLE_APPS=(
 "GoogleCalendarSyncAdapter" "AndroidDeveloperVerifier"
 "YourPhone_Stub" "AndroidAutoStub" "FamilyLinkParentalControls"
 "AndroidSystemIntelligence" "GoogleRestore"
-"SamsungMessages" "SearchSelector" "PlayAutoInstallConfig" "FamilyLinkParentalControls"
+"SamsungMessages" "SearchSelector" "PlayAutoInstallConfig" "Chrome" "Gmail2" "YouTube" "Chrome64"
 )
 
 
@@ -89,7 +90,7 @@ MISC_SERVICES=(
 "HashTagService" "LedCoverService"
 "LinkToWindowsService" "MemorySaver_O_Refresh"
 "MultiControl" "MultiControlVP6"
-"OMCAgent5" "OneStoreService" "FactoryAirCommandManager"
+"OneStoreService" "FactoryAirCommandManager"
 "SOAgent7" "SOAgent75" "SOAgent76"
 "SolarAudio-service" "SPPPushClient"
 "SumeNNService" "SVoiceIME"
@@ -163,18 +164,11 @@ KICK() {
     shift
     local APPS_LIST=("$@")
 
-    local APP_DIRS=(
-        "$EXTRACTED_FIRM_DIR/system/system/app"
-        "$EXTRACTED_FIRM_DIR/system/system/priv-app"
-        "$EXTRACTED_FIRM_DIR/product/app"
-        "$EXTRACTED_FIRM_DIR/product/priv-app"
-    )
-
+    # Dynamiczne wyszukiwanie katalogów aplikacji w strukturze firmware (system, product, system_ext)
     for app in "${APPS_LIST[@]}"; do
-        for dir in "${APP_DIRS[@]}"; do
-            target="$dir/$app"
-
+        find "$EXTRACTED_FIRM_DIR" -type d -iname "$app" | while read -r target; do
             if [[ -d "$target" ]]; then
+                echo "- Found and deleting bloatware directory: $target"
                 rm -rf "$target" || echo -e "[WARN] Failed to delete $target"
             fi
         done
@@ -198,7 +192,7 @@ DEBLOAT() {
 
     echo -e "Debloating apps and files."
 
-	# Debloat apps
+	# Debloat aplikacji ze wszystkich list
 	echo "- Debloating apps."
     KICK "$EXTRACTED_FIRM_DIR" "${DEBLOAT_APPS[@]}"
     KICK "$EXTRACTED_FIRM_DIR" "${CARRIER_APPS[@]}"
@@ -217,6 +211,8 @@ DEBLOAT() {
     rm -rf "$EXTRACTED_FIRM_DIR/system/system/etc/init/boot-image.prof"
     rm -rf "$EXTRACTED_FIRM_DIR/system/system/hidden"
     rm -rf "$EXTRACTED_FIRM_DIR/system/system/preload"
+    rm -rf "$EXTRACTED_FIRM_DIR/product/preload"
+    rm -rf "$EXTRACTED_FIRM_DIR/system_ext/preload"
 	rm -rf "$EXTRACTED_FIRM_DIR/system/system/etc/mediasearch"
 	rm -rf "$EXTRACTED_FIRM_DIR/system/system/priv-app/MediaSearch"
 	rm -rf "$EXTRACTED_FIRM_DIR/system/system/priv-app"/GameDriver-*
@@ -227,4 +223,12 @@ DEBLOAT() {
 	rm -rf "$EXTRACTED_FIRM_DIR/product/app/SpeechServicesByGoogle/oat"
 	rm -rf "$EXTRACTED_FIRM_DIR/product/app/YouTube/oat"
 	rm -rf "$EXTRACTED_FIRM_DIR/product/priv-app"/HotwordEnrollment*
+
+    # Dodatkowe, głębokie oczyszczenie struktur pamięci podręcznej oat dla wskazanych pakietów
+    find "$EXTRACTED_FIRM_DIR" -type d \( -name "SecCalculator_R" -o -name "VoiceNote_5.0" -o -name "ClockPackage" \) | while read -r app_folder; do
+        if [ -d "$app_folder" ]; then
+            echo "- Deep cleaning oat caches for: $app_folder"
+            rm -rf "$app_folder/oat"
+        fi
+    done
 }
