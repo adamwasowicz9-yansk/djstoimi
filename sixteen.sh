@@ -78,31 +78,6 @@ PATCH_SECURE_FOLDER "$WORK_DIR/services"
 PATCH_PRIVATE_SHARE "$WORK_DIR/samsungkeystoreutils"
 
 # --- INTEGRACJA Z CUSTOMIZE.SH (Modyfikacja PIN z 6 na 4 cyfry dla auto-confirm) ---
-echo "[CUSTOMIZE] Rozpoczynam aplikowanie patchy na długość kodu PIN (6 -> 4)..."
-
-# 1. Patche dla services.jar
-apply_smali_patch "$WORK_DIR/services" \
-    "smali/com/android/server/locksettings/LockSettingsService.smali" \
-    "const/4 v0, 0x6" \
-    "const/4 v0, 0x4"
-
-apply_smali_patch "$WORK_DIR/services" \
-    "smali/com/android/server/locksettings/SyntheticPasswordManager.smali" \
-    "const/4 v12, 0x6" \
-    "const/4 v12, 0x4"
-
-# 2. Patche dla SecSettings.apk (Znak $ w nazwie pliku maskowany jako \$)
-apply_smali_patch "$WORK_DIR/SecSettings" \
-    "smali/com/android/settings/password/ChooseLockPassword\$ChooseLockPasswordFragment.smali" \
-    "const/4 v4, 0x6" \
-    "const/4 v4, 0x4"
-
-apply_smali_patch "$WORK_DIR/SecSettings" \
-    "smali/com/android/settings/password/ChooseLockPassword\$ChooseLockPasswordFragment.smali" \
-    "const/4 p2, 0x6" \
-    "const/4 p2, 0x4"
-
-echo "[CUSTOMIZE] Patchowanie ukończone."
 
 # --- REKOMPILACJA JAR / APK ---
 RECOMPILE "$APKTOOL" "$FIRM_DIR/$TARGET_DEVICE/system/system/framework" "$WORK_DIR/ssrm" "$WORK_DIR"
