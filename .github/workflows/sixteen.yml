@@ -15,14 +15,14 @@ on:
         description: "TARGET_DEVICE_MODEL."
         required: true
         default: "SM-G990B"
-      TARGET_DEVICE_CSC:
-        description: "TARGET_DEVICE_CSC."
+      AP_URL:
+        description: "Bezpośredni link URL do pliku AP (może być czysty .tar.md5 lub spakowany .zip)"
         required: true
-        default: "EUX"
-      TARGET_DEVICE_IMEI:
-        description: "TARGET_DEVICE_IMEI."
+        default: ""
+      CSC_URL:
+        description: "Bezpośredni link URL do pliku CSC / HOME_CSC (może być czysty .tar.md5 lub spakowany .zip)"
         required: true
-        default: "353718681234563"
+        default: ""
       OUTPUT_FILESYSTEM:
         description: "OUTPUT_FILESYSTEM. e.g erofs / ext4 / f2fs"
         required: true
@@ -61,13 +61,42 @@ jobs:
         run: |
           sudo apt install -y p7zip-full lz4 liblz4-1 liblz4-dev libzstd1 libzstd-dev build-essential android-sdk-libsparse-utils f2fs-tools fuse2fs fuse e2fsprogs python3 python3-pip zipalign unzip openjdk-17-jdk jq perl xxd kmod erofs-utils linux-modules-extra-$(uname -r)
           sudo modprobe f2fs
-          pip3 install git+https://github.com/SN-Abdullah-Al-Noman/samloader.git --break-system-packages
           mkdir -p FW WORK OUT
 
-      - name: Download firmware ▶️ ${{ github.event.inputs.TARGET_DEVICE }} - ${{ github.event.inputs.TARGET_DEVICE_CSC }}
+      - name: Download and Package Custom Firmware (AP + CSC)
         run: |
-          source scripts/QuantumRom.sh
-          DOWNLOAD_FIRMWARE "${{ github.event.inputs.TARGET_DEVICE }}" "${{ github.event.inputs.TARGET_DEVICE_CSC }}" "${{ github.event.inputs.TARGET_DEVICE_IMEI }}" "FW" "${{ github.event.inputs.TARGET_FW_VERSION }}"
+          TARGET_DIR="FW/${{ github.event.inputs.TARGET_DEVICE }}"
+          mkdir -p "$TARGET_DIR"
+          TMP_DOWNLOAD_DIR=$(mktemp -d)
+          TMP_EXTRACT_DIR=$(mktemp -d)
+          
+          echo "📥 Pobieranie pliku AP..."
+          wget --no-check-certificate --trust-server-names "${{ github.event.inputs.AP_URL }}" -P "$TMP_DOWNLOAD_DIR"
+          
+          echo "📥 Pobieranie pliku CSC..."
+          wget --no-check-certificate --trust-server-names "${{ github.event.inputs.CSC_URL }}" -P "$TMP_DOWNLOAD_DIR"
+          
+          echo "📦 Sprawdzanie formatów i rozpakowywanie jeśli to konieczne..."
+          cd "$TMP_DOWNLOAD_DIR"
+          for file in *; do
+            [ -f "$file" ] || continue
+            if [[ "$file" == *.zip ]]; then
+              echo "  > Wykryto archiwum ZIP ($file), rozpakowywanie wewnętrznego pliku softu..."
+              unzip -q "$file" -d "$TMP_EXTRACT_DIR"
+            else
+              echo "  > Wykryto bezpośredni plik ($file), przenoszenie..."
+              cp "$file" "$TMP_EXTRACT_DIR/"
+            fi
+          done
+          
+          echo "📦 Tworzenie ostatecznej paczki firmware.zip dla skryptów basha..."
+          cd "$TMP_EXTRACT_DIR"
+          zip -j "$GITHUB_WORKSPACE/$TARGET_DIR/firmware.zip" *
+          
+          # Czyszczenie katalogów tymczasowych
+          rm -rf "$TMP_DOWNLOAD_DIR" "$TMP_EXTRACT_DIR"
+          
+          echo "VERSION=Custom_Split_URL_Build" >> $GITHUB_ENV
 
       - name: Extract firmware
         run: |
@@ -76,12 +105,14 @@ jobs:
 
       - name: Start Rom Build For ${{ github.event.inputs.STOCK_DEVICE }}
         run: |
+          # Przekazujemy 'GLB' jako CSC oraz stały ciąg cyfr jako IMEI, aby zachować 
+          # 100% zgodności ze strukturą argumentów i operacjami wewnątrz sixteen.sh
           sudo bash sixteen.sh \
             "${{ github.event.inputs.STOCK_DEVICE }}" \
             "${{ github.event.inputs.USE_UI_8_TETHERING_APEX }}" \
             "${{ github.event.inputs.TARGET_DEVICE }}" \
-            "${{ github.event.inputs.TARGET_DEVICE_CSC }}" \
-            "${{ github.event.inputs.TARGET_DEVICE_IMEI }}" \
+            "GLB" \
+            "123456789012345" \
             "${{ github.event.inputs.OUTPUT_FILESYSTEM }}" \
             "${{ github.event.inputs.CRAP_VERSION }}"
 
