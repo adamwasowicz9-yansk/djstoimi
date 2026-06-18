@@ -14,7 +14,7 @@ on:
       TARGET_DEVICE:
         description: "TARGET_DEVICE_MODEL."
         required: true
-        default: "SM-G990B"
+        default: "SM-S901E"
       AP_URL:
         description: "Bezpośredni link URL do pliku AP (może być czysty .tar.md5 lub spakowany .zip)"
         required: true
