@@ -14,14 +14,14 @@ on:
       TARGET_DEVICE:
         description: "TARGET_DEVICE_MODEL."
         required: true
-        default: "SM-G990B"
+        default: "SM-S901E"
       AP_URL:
-        description: "Bezpośredni link URL do pliku AP / Rom ZIP (może być czysty .tar.md5 lub spakowany .zip z obrazami .img)"
+        description: "Bezpośredni link URL do pliku AP (może być czysty .tar.md5 lub spakowany .zip)"
         required: true
         default: ""
       CSC_URL:
-        description: "Bezpośredni link URL do pliku CSC / HOME_CSC (Opcjonalnie - zostaw puste, jeśli obrazy są bezpośrednio w ZIP wyżej)"
-        required: false
+        description: "Bezpośredni link URL do pliku CSC / HOME_CSC (może być czysty .tar.md5 lub spakowany .zip)"
+        required: true
         default: ""
       OUTPUT_FILESYSTEM:
         description: "OUTPUT_FILESYSTEM. e.g erofs / ext4 / f2fs"
@@ -65,42 +65,58 @@ jobs:
 
       - name: Download and Package Custom Firmware (AP + CSC)
         run: |
+          set -e
+
+          normalize_url() {
+              local url="$1"
+
+              if [[ "$url" =~ ^https?://(www\.)?pixeldrain\.com/u/([^/?]+) ]]; then
+                  echo "https://pixeldrain.com/api/file/${BASH_REMATCH[2]}?download"
+                  return
+              fi
+
+              if [[ "$url" =~ ^https?://(www\.)?pixeldrain\.com/api/file/([^/?]+) ]]; then
+                  echo "$url"
+                  return
+              fi
+
+              echo "$url"
+          }
+
           TARGET_DIR="FW/${{ github.event.inputs.TARGET_DEVICE }}"
           mkdir -p "$TARGET_DIR"
           TMP_DOWNLOAD_DIR=$(mktemp -d)
           TMP_EXTRACT_DIR=$(mktemp -d)
-          
-          echo "📥 Pobieranie pliku AP / Rom ZIP..."
-          wget --no-check-certificate --trust-server-names "${{ github.event.inputs.AP_URL }}" -P "$TMP_DOWNLOAD_DIR"
-          
-          # Bezpieczne sprawdzenie: pobieraj CSC tylko, gdy użytkownik faktycznie podał link
+
+          AP_URL=$(normalize_url "${{ github.event.inputs.AP_URL }}")
+
+          echo "📥 Pobieranie pliku AP..."
+          wget --content-disposition --no-check-certificate --trust-server-names "$AP_URL" -P "$TMP_DOWNLOAD_DIR"
+
           if [ -n "${{ github.event.inputs.CSC_URL }}" ]; then
+            CSC_URL=$(normalize_url "${{ github.event.inputs.CSC_URL }}")
             echo "📥 Pobieranie pliku CSC..."
-            wget --no-check-certificate --trust-server-names "${{ github.event.inputs.CSC_URL }}" -P "$TMP_DOWNLOAD_DIR"
+            wget --content-disposition --no-check-certificate --trust-server-names "$CSC_URL" -P "$TMP_DOWNLOAD_DIR"
           else
-            echo "ℹ️ CSC_URL jest puste. Pomijam pobieranie pliku CSC i pracuję na zawartości z AP_URL."
+            echo "ℹ️ CSC_URL jest puste. Pomijam pobieranie pliku CSC."
           fi
-          
+
           echo "📦 Sprawdzanie formatów i rozpakowywanie jeśli to konieczne..."
           cd "$TMP_DOWNLOAD_DIR"
           for file in *; do
             [ -f "$file" ] || continue
             if [[ "$file" == *.zip ]]; then
-              echo "  > Wykryto archiwum ZIP ($file), rozpakowywanie wewnętrznych plików softu..."
               unzip -q "$file" -d "$TMP_EXTRACT_DIR"
             else
-              echo "  > Wykryto bezpośredni plik ($file), przenoszenie..."
               cp "$file" "$TMP_EXTRACT_DIR/"
             fi
           done
-          
-          echo "📦 Tworzenie ostatecznej paczki firmware.zip dla skryptów basha..."
+
           cd "$TMP_EXTRACT_DIR"
           zip -j "$GITHUB_WORKSPACE/$TARGET_DIR/firmware.zip" *
-          
-          # Czyszczenie katalogów tymczasowych
+
           rm -rf "$TMP_DOWNLOAD_DIR" "$TMP_EXTRACT_DIR"
-          
+
           echo "VERSION=Custom_Split_URL_Build" >> $GITHUB_ENV
 
       - name: Extract firmware
