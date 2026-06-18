@@ -107,13 +107,41 @@ jobs:
  
           echo "ZIP_PATH=$ZIP_PATH" >> $GITHUB_ENV
 
-      - name: Upload file in GoFile & Create Release.
+      - name: Upload file to PixelDrain & Create Release.
         env:
           GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
+          PIXELDRAIN_API_KEY: ${{ secrets.KNIUTI }}   # <-- twój secret
           STOCK_DEVICE: ${{ github.event.inputs.STOCK_DEVICE }}
           TARGET_DEVICE: ${{ github.event.inputs.TARGET_DEVICE }}
           OUTPUT_FILESYSTEM: ${{ github.event.inputs.OUTPUT_FILESYSTEM }}
           COMPRESS_IMG_TO_XZ: ${{ github.event.inputs.COMPRESS_IMG_TO_XZ }}
           USE_UI_8_TETHERING_APEX: ${{ github.event.inputs.USE_UI_8_TETHERING_APEX }}
+          CRAP_VERSION: ${{ github.event.inputs.CRAP_VERSION }}
         run: |
-          bash release.sh
+          # Install GitHub CLI if not present
+          if ! command -v gh &> /dev/null; then
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update
+            sudo apt install gh -y
+          fi
+
+          # Upload to PixelDrain with API key (Basic Auth)
+          echo "Uploading $ZIP_PATH to PixelDrain..."
+          UPLOAD_RESPONSE=$(curl -s -X POST -F "file=@$ZIP_PATH" -u ":$PIXELDRAIN_API_KEY" https://pixeldrain.com/api/file)
+          echo "Upload response: $UPLOAD_RESPONSE"
+          FILE_ID=$(echo $UPLOAD_RESPONSE | jq -r '.id')
+          if [ -z "$FILE_ID" ] || [ "$FILE_ID" = "null" ]; then
+            echo "❌ Failed to upload to PixelDrain"
+            exit 1
+          fi
+          PIXELDRAIN_URL="https://pixeldrain.com/u/$FILE_ID"
+          echo "✅ PixelDrain URL: $PIXELDRAIN_URL"
+
+          # Create release on GitHub
+          RELEASE_TAG="${{ github.event.inputs.TARGET_DEVICE }}-${{ github.event.inputs.CRAP_VERSION }}-$(date +%Y%m%d-%H%M%S)"
+          export GH_TOKEN="$GIT_TOKEN"
+          gh release create "$RELEASE_TAG" "$ZIP_PATH" \
+            --title "QuantumROM Sixteen - $TARGET_DEVICE Port for $STOCK_DEVICE" \
+            --notes "📦 Download: $PIXELDRAIN_URL" \
+            --repo $GITHUB_REPOSITORY
