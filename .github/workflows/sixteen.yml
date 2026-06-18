@@ -14,14 +14,14 @@ on:
       TARGET_DEVICE:
         description: "TARGET_DEVICE_MODEL."
         required: true
-        default: "SM-S901E"
+        default: "SM-G990B"
       AP_URL:
-        description: "Bezpośredni link URL do pliku AP (może być czysty .tar.md5 lub spakowany .zip)"
+        description: "Bezpośredni link URL do pliku AP / Rom ZIP (może być czysty .tar.md5 lub spakowany .zip z obrazami .img)"
         required: true
         default: ""
       CSC_URL:
-        description: "Bezpośredni link URL do pliku CSC / HOME_CSC (może być czysty .tar.md5 lub spakowany .zip)"
-        required: true
+        description: "Bezpośredni link URL do pliku CSC / HOME_CSC (Opcjonalnie - zostaw puste, jeśli obrazy są bezpośrednio w ZIP wyżej)"
+        required: false
         default: ""
       OUTPUT_FILESYSTEM:
         description: "OUTPUT_FILESYSTEM. e.g erofs / ext4 / f2fs"
@@ -70,18 +70,23 @@ jobs:
           TMP_DOWNLOAD_DIR=$(mktemp -d)
           TMP_EXTRACT_DIR=$(mktemp -d)
           
-          echo "📥 Pobieranie pliku AP..."
+          echo "📥 Pobieranie pliku AP / Rom ZIP..."
           wget --no-check-certificate --trust-server-names "${{ github.event.inputs.AP_URL }}" -P "$TMP_DOWNLOAD_DIR"
           
-          echo "📥 Pobieranie pliku CSC..."
-          wget --no-check-certificate --trust-server-names "${{ github.event.inputs.CSC_URL }}" -P "$TMP_DOWNLOAD_DIR"
+          # Bezpieczne sprawdzenie: pobieraj CSC tylko, gdy użytkownik faktycznie podał link
+          if [ -n "${{ github.event.inputs.CSC_URL }}" ]; then
+            echo "📥 Pobieranie pliku CSC..."
+            wget --no-check-certificate --trust-server-names "${{ github.event.inputs.CSC_URL }}" -P "$TMP_DOWNLOAD_DIR"
+          else
+            echo "ℹ️ CSC_URL jest puste. Pomijam pobieranie pliku CSC i pracuję na zawartości z AP_URL."
+          fi
           
           echo "📦 Sprawdzanie formatów i rozpakowywanie jeśli to konieczne..."
           cd "$TMP_DOWNLOAD_DIR"
           for file in *; do
             [ -f "$file" ] || continue
             if [[ "$file" == *.zip ]]; then
-              echo "  > Wykryto archiwum ZIP ($file), rozpakowywanie wewnętrznego pliku softu..."
+              echo "  > Wykryto archiwum ZIP ($file), rozpakowywanie wewnętrznych plików softu..."
               unzip -q "$file" -d "$TMP_EXTRACT_DIR"
             else
               echo "  > Wykryto bezpośredni plik ($file), przenoszenie..."
