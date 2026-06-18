@@ -15,10 +15,6 @@ on:
         description: "TARGET_DEVICE_MODEL."
         required: true
         default: "SM-S901E"
-      AP_URL:
-        description: "Bezpośredni link URL do pliku AP (może być czysty .tar.md5 lub spakowany .zip)"
-        required: true
-        default: ""
       CSC_URL:
         description: "Bezpośredni link URL do pliku CSC / HOME_CSC (może być czysty .tar.md5 lub spakowany .zip)"
         required: true
@@ -63,15 +59,24 @@ jobs:
           sudo modprobe f2fs
           mkdir -p FW WORK OUT
 
-      - name: Download and Package Custom Firmware (AP + CSC)
+      - name: Download AP Artifact from urban-winner
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          github_token: ${{ secrets.GIT_TOKEN }}
+          repo: durenstudnio/urban-winner
+          run_id: 27711530815
+          name: AP_S901EXXSDGZB6
+          path: FW/${{ github.event.inputs.TARGET_DEVICE }}
+
+      - name: Download and Package CSC Firmware
         run: |
           TARGET_DIR="FW/${{ github.event.inputs.TARGET_DEVICE }}"
           mkdir -p "$TARGET_DIR"
           TMP_DOWNLOAD_DIR=$(mktemp -d)
           TMP_EXTRACT_DIR=$(mktemp -d)
           
-          echo "📥 Pobieranie pliku AP..."
-          wget --no-check-certificate --trust-server-names "${{ github.event.inputs.AP_URL }}" -P "$TMP_DOWNLOAD_DIR"
+          # Przenosimy automatycznie pobrany AP z artefaktów do folderu tymczasowego ekstrakcji
+          mv "$TARGET_DIR"/* "$TMP_EXTRACT_DIR/" 2>/dev/null || true
           
           echo "📥 Pobieranie pliku CSC..."
           wget --no-check-certificate --trust-server-names "${{ github.event.inputs.CSC_URL }}" -P "$TMP_DOWNLOAD_DIR"
@@ -105,8 +110,6 @@ jobs:
 
       - name: Start Rom Build For ${{ github.event.inputs.STOCK_DEVICE }}
         run: |
-          # Przekazujemy 'GLB' jako CSC oraz stały ciąg cyfr jako IMEI, aby zachować 
-          # 100% zgodności ze strukturą argumentów i operacjami wewnątrz sixteen.sh
           sudo bash sixteen.sh \
             "${{ github.event.inputs.STOCK_DEVICE }}" \
             "${{ github.event.inputs.USE_UI_8_TETHERING_APEX }}" \
