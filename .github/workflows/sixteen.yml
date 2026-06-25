@@ -46,6 +46,13 @@ jobs:
             exit 1
           fi
 
+      # ============================================================
+      # Czyszczenie – po pobraniu, żeby nie usuwać obrazów Dockera
+      # ============================================================
+      - name: Remove unnecessary files.
+        uses: rokibhasansagar/slimhub_actions@v25.42.5
+        # opcjonalnie: with: retain: 'docker' – jeśli chcesz zachować obrazy
+        
       - name: Install Dependencies.
         run: |
           sudo apt install -y p7zip-full lz4 liblz4-1 liblz4-dev libzstd1 libzstd-dev build-essential android-sdk-libsparse-utils f2fs-tools fuse2fs fuse e2fsprogs python3 python3-pip zipalign unzip openjdk-17-jdk jq perl xxd kmod erofs-utils linux-modules-extra-$(uname -r)
@@ -68,13 +75,6 @@ jobs:
         run: |
           mkdir -p FW/$TARGET_DEVICE
           b2 download-file-by-name "$B2_BUCKET" "$B2_FILE" "FW/$TARGET_DEVICE/firmware.zip"
-
-      # ============================================================
-      # Czyszczenie – po pobraniu, żeby nie usuwać obrazów Dockera
-      # ============================================================
-      - name: Remove unnecessary files.
-        uses: rokibhasansagar/slimhub_actions@v25.42.5
-        # opcjonalnie: with: retain: 'docker' – jeśli chcesz zachować obrazy
 
       - name: Extract firmware
         run: |
