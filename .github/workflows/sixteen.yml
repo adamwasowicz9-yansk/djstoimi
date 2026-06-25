@@ -10,7 +10,7 @@ on:
       USE_UI_8_TETHERING_APEX:
         description: "Set True if your kernel BPF version is 5.4 (lower than 5.10)."
         required: true
-        default: "False"
+        default: "True"
       TARGET_DEVICE:
         description: "TARGET_DEVICE_MODEL."
         required: true
@@ -53,23 +53,29 @@ jobs:
           mkdir -p FW WORK OUT
 
       # ============================================================
-      # Pobieranie firmware z Backblaze B2 – poprawiona akcja
+      # Pobieranie firmware za pomocą b2 CLI (bez Dockera)
       # ============================================================
-      - name: Create firmware directory
-        run: mkdir -p FW/${{ github.event.inputs.TARGET_DEVICE }}
+      - name: Install b2 CLI
+        run: pip install b2
 
       - name: Download firmware from Backblaze B2
-        uses: sksat/b2-download-action@main
-        with:
-          key_id: ${{ secrets.B2_APPLICATION_KEY_ID }}
-          key: ${{ secrets.B2_APPLICATION_KEY }}
-          bucket: ${{ secrets.B2_BUCKET_NAME }}
-          file_name: ${{ secrets.B2_FILE_NAME }}          # zamiast src
-          local_name: FW/${{ github.event.inputs.TARGET_DEVICE }}/firmware.zip   # zamiast dest
-          
+        env:
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET_NAME }}
+          B2_FILE: ${{ secrets.B2_FILE_NAME }}
+          TARGET_DEVICE: ${{ github.event.inputs.TARGET_DEVICE }}
+        run: |
+          mkdir -p FW/$TARGET_DEVICE
+          b2 download-file-by-name "$B2_BUCKET" "$B2_FILE" "FW/$TARGET_DEVICE/firmware.zip"
+
+      # ============================================================
+      # Czyszczenie – po pobraniu, żeby nie usuwać obrazów Dockera
+      # ============================================================
       - name: Remove unnecessary files.
         uses: rokibhasansagar/slimhub_actions@v25.42.5
-     
+        # opcjonalnie: with: retain: 'docker' – jeśli chcesz zachować obrazy
+
       - name: Extract firmware
         run: |
           source scripts/QuantumRom.sh
