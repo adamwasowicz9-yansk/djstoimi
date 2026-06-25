@@ -1254,6 +1254,84 @@ ADJUST_SYSTEM_EXT() {
 }
 
 
+FIX_SYSTEM_NESTING() {
+    echo " "
+
+    if [ "$#" -ne 1 ]; then
+        echo -e "Usage: ${FUNCNAME[0]} <EXTRACTED_FIRM_DIR>"
+        return 1
+    fi
+
+    local EXTRACTED_FIRM_DIR="$1"
+    local SYSTEM_DIR="${EXTRACTED_FIRM_DIR}/system"
+    local NESTED_DIR="${SYSTEM_DIR}/system"
+
+    # Only proceed if the nested system/system structure actually exists
+    if [ ! -d "$NESTED_DIR" ]; then
+        echo -e "- No system/system nesting found. Skipping."
+        return 0
+    fi
+
+    echo -e "Fixing system partition nesting: system/system → system"
+
+    # Move all items from system/system/ up to system/
+    # Conflicts (e.g. symlinks left by SEPARATE_SYSTEM_EXT) are removed first
+    find "$NESTED_DIR" -maxdepth 1 -mindepth 1 | while IFS= read -r item; do
+        local base
+        base="$(basename "$item")"
+        local dest="${SYSTEM_DIR}/${base}"
+
+        if [ -e "$dest" ] || [ -L "$dest" ]; then
+            echo -e "- Conflict: removing existing $dest"
+            rm -rf "$dest"
+        fi
+
+        echo -e "- Moving: $base"
+        mv "$item" "${SYSTEM_DIR}/"
+    done
+
+    rm -rf "$NESTED_DIR"
+
+    # ── Fix fs_config ──────────────────────────────────────────────────────────
+    local SYSTEM_FS_CONFIG="${EXTRACTED_FIRM_DIR}/config/system_fs_config"
+
+    if [ -f "$SYSTEM_FS_CONFIG" ]; then
+        echo -e "- Fixing system_fs_config"
+
+        # Drop the now-gone system/system directory entry
+        grep -v '^system/system 0 0 0755$' "$SYSTEM_FS_CONFIG" \
+            > "$SYSTEM_FS_CONFIG.tmp" && mv "$SYSTEM_FS_CONFIG.tmp" "$SYSTEM_FS_CONFIG"
+
+        # Rewrite system/system/<path> → system/<path>
+        sed -i 's|^system/system/|system/|g' "$SYSTEM_FS_CONFIG"
+
+        sort -u "$SYSTEM_FS_CONFIG" -o "$SYSTEM_FS_CONFIG"
+        echo -e "- system_fs_config fixed"
+    fi
+
+    # ── Fix file_contexts ──────────────────────────────────────────────────────
+    local SYSTEM_FILE_CONTEXTS="${EXTRACTED_FIRM_DIR}/config/system_file_contexts"
+
+    if [ -f "$SYSTEM_FILE_CONTEXTS" ]; then
+        echo -e "- Fixing system_file_contexts"
+
+        # Drop the now-gone /system/system standalone entry
+        grep -v '^/system/system[[:space:]]' "$SYSTEM_FILE_CONTEXTS" \
+            > "$SYSTEM_FILE_CONTEXTS.tmp" && mv "$SYSTEM_FILE_CONTEXTS.tmp" "$SYSTEM_FILE_CONTEXTS"
+
+        # Rewrite /system/system/<path> → /system/<path>
+sed -i 's|^/system/system/|/system/|g' "$SYSTEM_FILE_CONTEXTS"
+# Zachowaj tylko unikalne pierwsze kolumny (ścieżki), ignorując sprzeczne etykiety
+awk '!seen[$1]++' "$SYSTEM_FILE_CONTEXTS" > "$SYSTEM_FILE_CONTEXTS.tmp"
+mv "$SYSTEM_FILE_CONTEXTS.tmp" "$SYSTEM_FILE_CONTEXTS"
+
+        echo -e "- system_file_contexts fixed"
+    fi
+
+    echo -e "- System nesting fixed."
+}
+
+
 GET_SYSTEM_EXT_DIR() {
     if [ "$#" -ne 1 ]; then
         echo "Usage: ${FUNCNAME[0]} <EXTRACTED_FIRM_DIR>"
