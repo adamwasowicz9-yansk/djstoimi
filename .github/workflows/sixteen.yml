@@ -46,13 +46,9 @@ jobs:
             exit 1
           fi
 
-      # ============================================================
-      # Czyszczenie – po pobraniu, żeby nie usuwać obrazów Dockera
-      # ============================================================
       - name: Remove unnecessary files.
         uses: rokibhasansagar/slimhub_actions@v25.42.5
-        # opcjonalnie: with: retain: 'docker' – jeśli chcesz zachować obrazy
-        
+
       - name: Install Dependencies.
         run: |
           sudo apt install -y p7zip-full lz4 liblz4-1 liblz4-dev libzstd1 libzstd-dev build-essential android-sdk-libsparse-utils f2fs-tools fuse2fs fuse e2fsprogs python3 python3-pip zipalign unzip openjdk-17-jdk jq perl xxd kmod erofs-utils linux-modules-extra-$(uname -r)
@@ -60,21 +56,17 @@ jobs:
           mkdir -p FW WORK OUT
 
       # ============================================================
-      # Pobieranie firmware za pomocą b2 CLI (bez Dockera)
+      # Pobieranie firmware z buzzheavier.com (bezpośredni link)
       # ============================================================
-      - name: Install b2 CLI
-        run: pip install b2
-
-      - name: Download firmware from Backblaze B2
+      - name: Download firmware from buzzheavier
         env:
-          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
-          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
-          B2_BUCKET: ${{ secrets.B2_BUCKET_NAME }}
-          B2_FILE: ${{ secrets.B2_FILE_NAME }}
           TARGET_DEVICE: ${{ github.event.inputs.TARGET_DEVICE }}
+          BUZZ_URL: "https://ts.buzzheavier.com/d/q7648fqk6taj?v=c8GtVe4692HOqwUYO9UO_nIqEA7hb_dmN_yx91thN46PMb4iNZY7N-wk8E__yJWc5LQjdy5uwB1kunJ46jo8tuA5-tp4YBPfMkUjtoNrQDEnsrv5gqa9G5OcPONVwaRhavGEGqDaFFCmmbJUgM6lwINRVfXtXqCGN8wr5FG1keKgPmORZ7o"
         run: |
           mkdir -p FW/$TARGET_DEVICE
-          b2 download-file-by-name "$B2_BUCKET" "$B2_FILE" "FW/$TARGET_DEVICE/firmware.zip"
+          echo "📥 Pobieranie firmware z buzzheavier.com..."
+          wget -O FW/$TARGET_DEVICE/firmware.zip "$BUZZ_URL"
+          echo "✅ Pobieranie zakończone!"
 
       - name: Extract firmware
         run: |
